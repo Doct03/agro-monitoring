@@ -103,29 +103,39 @@ export const detectCropReferenceController = async (req: Request, res: Response)
         ).toISOString()
       : null;
 
-    const createdReference = await prisma.cropReference.create({
-      data: {
-        name: String(name).trim(),
-        averageDaysToHarvest: suggestion.averageDaysToHarvest,
-        optimalMoistureMin: suggestion.optimalMoistureMin,
-        optimalMoistureMax: suggestion.optimalMoistureMax,
-        baseYield: suggestion.baseYield,
-      } as any,
-    });
+  let createdReference = null;
 
-    return res.json({
-      found: false,
-      message:
-        "Культура не знайдена у довіднику. Параметри запропоновано автоматично та додано до довідника.",
-      reason: suggestion.reason,
-      reference: createdReference,
-      fallback: {
-        expectedHarvestDate,
-        optimalMoistureMin: suggestion.optimalMoistureMin,
-        optimalMoistureMax: suggestion.optimalMoistureMax,
-        baseYield: suggestion.baseYield,
-      },
-    });
+try {
+  createdReference = await prisma.cropReference.create({
+    data: {
+      name: String(name).trim(),
+      averageDaysToHarvest: suggestion.averageDaysToHarvest,
+      optimalMoistureMin: suggestion.optimalMoistureMin,
+      optimalMoistureMax: suggestion.optimalMoistureMax,
+      baseYield: suggestion.baseYield,
+    } as any,
+  });
+} catch (createReferenceError) {
+  console.error(
+    "Create crop reference after AI suggestion error:",
+    createReferenceError
+  );
+}
+
+return res.json({
+  found: false,
+  message: createdReference
+    ? "Культура не знайдена у довіднику. Параметри запропоновано автоматично та додано до довідника."
+    : "Культура не знайдена у довіднику. Параметри запропоновано автоматично.",
+  reason: suggestion.reason,
+  reference: createdReference,
+  fallback: {
+    expectedHarvestDate,
+    optimalMoistureMin: suggestion.optimalMoistureMin,
+    optimalMoistureMax: suggestion.optimalMoistureMax,
+    baseYield: suggestion.baseYield,
+  },
+});
   } catch (error) {
     console.error("Detect crop reference error:", error);
     return res.status(500).json({
