@@ -1,198 +1,30 @@
 import { Request, Response } from "express";
 import prisma from "../lib/prisma";
-import {
-  findCropReference,
-  getCropCatalog,
-} from "../services/crop-reference.service";
 import { suggestUnknownCropParamsWithLLM } from "../services/crop-llm.service";
 
-export const getCropCatalogController = (_req: Request, res: Response) => {
+const normalizeName = (value: string) => {
+  return value.trim().toLowerCase();
+};
+
+const addDays = (date: Date, days: number) => {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+};
+
+export const getCropCatalogController = async (_req: Request, res: Response) => {
   try {
-    return res.json({ crops: getCropCatalog() });
+    const references = await prisma.cropReference.findMany({
+      orderBy: {
+        id: "desc",
+      },
+    });
+
+    return res.json(references);
   } catch (error) {
     console.error("Get crop catalog error:", error);
-    return res.status(500).json({ message: "Internal server error" });
-  }
-};
-
-const buildExpectedHarvestDate = (
-  plantingDate: string | undefined,
-  days: number
-) => {
-  if (!plantingDate) return null;
-
-  const planting = new Date(plantingDate);
-  if (Number.isNaN(planting.getTime())) return null;
-
-  const harvest = new Date(planting);
-  harvest.setDate(harvest.getDate() + days);
-  return harvest.toISOString();
-};
-
-export const detectCropReferenceController = async (
-  req: Request,
-  res: Response
-) => {
-  try {
-    const { name, plantingDate, region, soilType } = req.body;
-
-    if (!name || typeof name !== "string") {
-      return res.status(400).json({ message: "Crop name is required" });
-    }
-
-    const reference = findCropReference(name);
-
-    if (reference) {
-      return res.json({
-        found: true,
-        crop: {
-          canonicalName: reference.name,
-          averageDaysToHarvest: reference.averageDaysToHarvest,
-          optimalMoistureMin: reference.optimalMoistureMin,
-          optimalMoistureMax: reference.optimalMoistureMax,
-          baseYield: reference.baseYield,
-          expectedHarvestDate: buildExpectedHarvestDate(
-            plantingDate,
-            reference.averageDaysToHarvest
-          ),
-        },
-        message: "Культуру знайдено у довіднику.",
-      });
-    }
-
-  const llmSuggestion = await suggestUnknownCropParamsWithLLM({
-  cropName: name,
-  region,
-  soilType,
-});
-
-let createdReference = null;
-
-try {
-  createdReference = await prisma.cropReference.create({
-    data: {
-      name: name.trim(),
-      description: llmSuggestion.reason || null,
-      category: null,
-      optimalMoistureMin: llmSuggestion.optimalMoistureMin,
-      optimalMoistureMax: llmSuggestion.optimalMoistureMax,
-      baseYield: llmSuggestion.baseYield,
-      yieldUnit: "т/га",
-      growingDays: llmSuggestion.averageDaysToHarvest,
-      imageUrl: null,
-    },
-  });
-} catch (createError: any) {
-  if (createError.code !== "P2002") {
-    throw createError;
-  }
-
-  createdReference = await prisma.cropReference.findFirst({
-    where: {
-      name: {
-        equals: name.trim(),
-        mode: "insensitive",
-      },
-    },
-  });
-}
-
-return res.json({
-  found: false,
-  createdReference: Boolean(createdReference),
-  fallback: {
-    averageDaysToHarvest: llmSuggestion.averageDaysToHarvest,
-    optimalMoistureMin: llmSuggestion.optimalMoistureMin,
-    optimalMoistureMax: llmSuggestion.optimalMoistureMax,
-    baseYield: llmSuggestion.baseYield,
-    yieldUnit: "т/га",
-    imageUrl: null,
-    expectedHarvestDate: buildExpectedHarvestDate(
-      plantingDate,
-      llmSuggestion.averageDaysToHarvest
-    ),
-  },
-  message:
-    "Культура не знайдена у довіднику. Параметри запропоновано ШІ та додано до довідника.",
-  reason: llmSuggestion.reason,
-});
-  } catch (error) {
-    console.error("Detect crop reference error:", error);
     return res.status(500).json({
-      message:
-        error instanceof Error ? error.message : "Internal server error",
-    });
-  }
-};
-export const createCropReferenceWithAI = async (
-  req: Request,
-  res: Response
-) => {
-  try {
-    const { name, region, soilType } = req.body;
-
-    if (!name || typeof name !== "string" || !name.trim()) {
-      return res.status(400).json({
-        message: "Crop name is required",
-      });
-    }
-
-    const cropName = name.trim();
-
-    const existingReference = await prisma.cropReference.findFirst({
-      where: {
-        name: {
-          equals: cropName,
-          mode: "insensitive",
-        },
-      },
-    });
-
-    if (existingReference) {
-      return res.json({
-        created: false,
-        message: "Культура вже існує у довіднику.",
-        crop: existingReference,
-      });
-    }
-
-    const aiSuggestion = await suggestUnknownCropParamsWithLLM({
-      cropName,
-      region,
-      soilType,
-    });
-
-    const createdReference = await prisma.cropReference.create({
-      data: {
-        name: cropName,
-        description: aiSuggestion.reason || null,
-        category: null,
-        optimalMoistureMin: aiSuggestion.optimalMoistureMin,
-        optimalMoistureMax: aiSuggestion.optimalMoistureMax,
-        baseYield: aiSuggestion.baseYield,
-        yieldUnit: "т/га",
-        growingDays: aiSuggestion.averageDaysToHarvest,
-        imageUrl: null,
-      },
-    });
-
-    return res.status(201).json({
-      created: true,
-      message: "Культуру додано до довідника за допомогою ШІ.",
-      crop: createdReference,
-      reason: aiSuggestion.reason,
-    });
-  } catch (error: any) {
-    console.error("Create crop reference with AI error:", error);
-
-    if (error.code === "P2002") {
-      return res.status(409).json({
-        message: "Культура з такою назвою вже існує у довіднику.",
-      });
-    }
-
-    return res.status(500).json({
-      message: error instanceof Error ? error.message : "Internal server error",
+      message: "Не вдалося завантажити довідник культур.",
     });
   }
 };
@@ -201,74 +33,181 @@ export const getCropReferences = async (_req: Request, res: Response) => {
   try {
     const references = await prisma.cropReference.findMany({
       orderBy: {
-        name: "asc",
+        id: "desc",
       },
     });
 
     return res.json(references);
   } catch (error) {
     console.error("Get crop references error:", error);
-    return res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({
+      message: "Не вдалося завантажити довідник культур.",
+    });
+  }
+};
+
+export const detectCropReferenceController = async (req: Request, res: Response) => {
+  try {
+    const { name, plantingDate, region, soilType } = req.body;
+
+    if (!name || typeof name !== "string") {
+      return res.status(400).json({
+        message: "Назва культури є обов’язковою.",
+      });
+    }
+
+    const normalized = normalizeName(name);
+
+    const reference = await prisma.cropReference.findFirst({
+      where: {
+        name: {
+          equals: normalized,
+          mode: "insensitive",
+        },
+      },
+    });
+
+    if (reference) {
+      const averageDaysToHarvest = Number(
+        (reference as any).averageDaysToHarvest || 90
+      );
+
+      const expectedHarvestDate = plantingDate
+        ? addDays(new Date(plantingDate), averageDaysToHarvest).toISOString()
+        : null;
+
+      return res.json({
+        found: true,
+        message: "Культуру знайдено у довіднику.",
+        crop: {
+          id: reference.id,
+          canonicalName: reference.name,
+          expectedHarvestDate,
+          optimalMoistureMin: (reference as any).optimalMoistureMin ?? null,
+          optimalMoistureMax: (reference as any).optimalMoistureMax ?? null,
+          baseYield: (reference as any).baseYield ?? null,
+        },
+      });
+    }
+
+    const suggestion = await suggestUnknownCropParamsWithLLM({
+      cropName: name,
+      region,
+      soilType,
+    });
+
+    const expectedHarvestDate = plantingDate
+      ? addDays(
+          new Date(plantingDate),
+          suggestion.averageDaysToHarvest
+        ).toISOString()
+      : null;
+
+    const createdReference = await prisma.cropReference.create({
+      data: {
+        name: String(name).trim(),
+        averageDaysToHarvest: suggestion.averageDaysToHarvest,
+        optimalMoistureMin: suggestion.optimalMoistureMin,
+        optimalMoistureMax: suggestion.optimalMoistureMax,
+        baseYield: suggestion.baseYield,
+      } as any,
+    });
+
+    return res.json({
+      found: false,
+      message:
+        "Культура не знайдена у довіднику. Параметри запропоновано автоматично та додано до довідника.",
+      reason: suggestion.reason,
+      reference: createdReference,
+      fallback: {
+        expectedHarvestDate,
+        optimalMoistureMin: suggestion.optimalMoistureMin,
+        optimalMoistureMax: suggestion.optimalMoistureMax,
+        baseYield: suggestion.baseYield,
+      },
+    });
+  } catch (error) {
+    console.error("Detect crop reference error:", error);
+    return res.status(500).json({
+      message: "Не вдалося визначити параметри культури.",
+    });
+  }
+};
+
+export const createCropReferenceWithAI = async (req: Request, res: Response) => {
+  try {
+    const { name, region, soilType } = req.body;
+
+    if (!name || typeof name !== "string") {
+      return res.status(400).json({
+        message: "Назва культури є обов’язковою.",
+      });
+    }
+
+    const existing = await prisma.cropReference.findFirst({
+      where: {
+        name: {
+          equals: String(name).trim(),
+          mode: "insensitive",
+        },
+      },
+    });
+
+    if (existing) {
+      return res.status(409).json({
+        message: "Така культура вже є у довіднику.",
+        crop: existing,
+      });
+    }
+
+    const suggestion = await suggestUnknownCropParamsWithLLM({
+      cropName: name,
+      region,
+      soilType,
+    });
+
+    const reference = await prisma.cropReference.create({
+      data: {
+        name: String(name).trim(),
+        averageDaysToHarvest: suggestion.averageDaysToHarvest,
+        optimalMoistureMin: suggestion.optimalMoistureMin,
+        optimalMoistureMax: suggestion.optimalMoistureMax,
+        baseYield: suggestion.baseYield,
+      } as any,
+    });
+
+    return res.status(201).json(reference);
+  } catch (error) {
+    console.error("Create crop reference with AI error:", error);
+    return res.status(500).json({
+      message: "Не вдалося створити культуру через AI.",
+    });
   }
 };
 
 export const createCropReference = async (req: Request, res: Response) => {
   try {
-    const {
-      name,
-      description,
-      category,
-      optimalMoistureMin,
-      optimalMoistureMax,
-      baseYield,
-      yieldUnit,
-      growingDays,
-      imageUrl,
-    } = req.body;
+    const { name } = req.body;
 
-    if (!name || !String(name).trim()) {
+    if (!name || typeof name !== "string") {
       return res.status(400).json({
-        message: "Name is required",
+        message: "Назва культури є обов’язковою.",
       });
     }
 
     const reference = await prisma.cropReference.create({
       data: {
+        ...req.body,
         name: String(name).trim(),
-        description: description || null,
-        category: category || null,
-        optimalMoistureMin:
-          optimalMoistureMin !== undefined && optimalMoistureMin !== ""
-            ? Number(optimalMoistureMin)
-            : null,
-        optimalMoistureMax:
-          optimalMoistureMax !== undefined && optimalMoistureMax !== ""
-            ? Number(optimalMoistureMax)
-            : null,
-        baseYield:
-          baseYield !== undefined && baseYield !== ""
-            ? Number(baseYield)
-            : null,
-        yieldUnit: yieldUnit || null,
-        growingDays:
-          growingDays !== undefined && growingDays !== ""
-            ? Number(growingDays)
-            : null,
-        imageUrl: imageUrl || null,
-      },
+      } as any,
     });
 
     return res.status(201).json(reference);
-  } catch (error: any) {
+  } catch (error) {
     console.error("Create crop reference error:", error);
-
-    if (error.code === "P2002") {
-      return res.status(409).json({
-        message: "Культура з такою назвою вже існує у довіднику.",
-      });
-    }
-
-    return res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({
+      message: "Не вдалося створити культуру в довіднику.",
+    });
   }
 };
 
@@ -278,20 +217,24 @@ export const deleteCropReference = async (req: Request, res: Response) => {
 
     if (Number.isNaN(id)) {
       return res.status(400).json({
-        message: "Invalid crop reference id",
+        message: "Некоректний id культури.",
       });
     }
 
     await prisma.cropReference.delete({
-      where: { id },
+      where: {
+        id,
+      },
     });
 
     return res.json({
-      message: "Crop reference deleted",
+      message: "Культуру видалено з довідника.",
     });
   } catch (error) {
     console.error("Delete crop reference error:", error);
-    return res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({
+      message: "Не вдалося видалити культуру з довідника.",
+    });
   }
 };
 
@@ -301,7 +244,7 @@ export const findCropReferenceByName = async (req: Request, res: Response) => {
 
     if (!name) {
       return res.status(400).json({
-        message: "Name query is required",
+        message: "Назва культури є обов’язковою.",
       });
     }
 
@@ -315,18 +258,16 @@ export const findCropReferenceByName = async (req: Request, res: Response) => {
     });
 
     if (!reference) {
-      return res.json({
-        found: false,
-        message: "Культуру не знайдено у довіднику.",
+      return res.status(404).json({
+        message: "Культуру не знайдено.",
       });
     }
 
-    return res.json({
-      found: true,
-      crop: reference,
-    });
+    return res.json(reference);
   } catch (error) {
     console.error("Find crop reference by name error:", error);
-    return res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({
+      message: "Не вдалося знайти культуру.",
+    });
   }
 };

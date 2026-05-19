@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import prisma from "../lib/prisma";
-import { findCropReference } from "../services/crop-reference.service";
+
 
 export const createCrop = async (req: Request, res: Response) => {
   try {
@@ -72,29 +72,23 @@ export const createCrop = async (req: Request, res: Response) => {
       });
     }
 
-    const reference = findCropReference(name);
 
-    const crop = await prisma.crop.create({
-      data: {
-        name: reference?.name ?? name.trim(),
-        plantingDate: planting,
-        growthStage: growthStage ? String(growthStage).trim() : null,
-        expectedHarvestDate: harvestDate,
-        optimalMoistureMin:
-          optimalMoistureMin !== undefined && optimalMoistureMin !== ""
-            ? Number(optimalMoistureMin)
-            : null,
-        optimalMoistureMax:
-          optimalMoistureMax !== undefined && optimalMoistureMax !== ""
-            ? Number(optimalMoistureMax)
-            : null,
-        baseYield:
-          baseYield !== undefined && baseYield !== ""
-            ? Number(baseYield)
-            : null,
-        isCustom: !reference,
-        plotId: Number(plotId),
-      },
+ const crop = await prisma.crop.create({
+  data: {
+    name: String(name).trim(),
+    plantingDate: new Date(plantingDate),
+    growthStage: growthStage || null,
+    expectedHarvestDate: expectedHarvestDate
+      ? new Date(expectedHarvestDate)
+      : null,
+    optimalMoistureMin:
+      optimalMoistureMin !== undefined ? Number(optimalMoistureMin) : null,
+    optimalMoistureMax:
+      optimalMoistureMax !== undefined ? Number(optimalMoistureMax) : null,
+    baseYield: baseYield !== undefined ? Number(baseYield) : null,
+    isCustom: true,
+    plotId: Number(plotId),
+  },
       include: {
         plot: {
           select: {
