@@ -1,0 +1,174 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  region    String?
+  role      String   @default("USER")
+  createdAt DateTime @default(now())
+
+  plots         Plot[]
+  notifications Notification[]
+}
+
+model Plot {
+  id        Int      @id @default(autoincrement())
+  name      String
+  area      Float
+  region    String
+  latitude  Float
+  longitude Float
+  soilType  String?
+  createdAt DateTime @default(now())
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  crops           Crop[]
+  weatherRecords  WeatherRecord[]
+  recommendations Recommendation[]
+}
+
+model Crop {
+  id                  Int      @id @default(autoincrement())
+  name                String
+  plantingDate        DateTime
+  growthStage         String?
+  expectedHarvestDate DateTime?
+  optimalMoistureMin Float?
+  optimalMoistureMax Float?
+  baseYield           Float?
+  isCustom            Boolean  @default(false)
+
+  plotId Int
+  plot   Plot @relation(fields: [plotId], references: [id], onDelete: Cascade)
+
+  moistureRecords MoistureRecord[]
+  recommendations Recommendation[]
+  forecasts       YieldForecast[]
+  iotSensors IotSensor[]
+}
+
+model MoistureRecord {
+  id         Int      @id @default(autoincrement())
+  value      Float
+  source     String   @default("manual")
+  recordedAt DateTime @default(now())
+
+  cropId Int
+  crop   Crop @relation(fields: [cropId], references: [id], onDelete: Cascade)
+}
+
+model WeatherRecord {
+  id          Int      @id @default(autoincrement())
+  temperature Float
+  humidity    Float
+  rainfall    Float
+  windSpeed   Float?
+  recordedAt  DateTime @default(now())
+
+  plotId Int
+  plot   Plot @relation(fields: [plotId], references: [id], onDelete: Cascade)
+}
+
+model Recommendation {
+  id                 Int      @id @default(autoincrement())
+  message            String
+  recommendationType String
+  irrigationVolume   Float?
+  explanation String?
+  advice      String?
+  priority    String?
+  createdAt          DateTime @default(now())
+  
+
+  plotId Int
+  plot   Plot @relation(fields: [plotId], references: [id], onDelete: Cascade)
+
+  cropId Int?
+  crop   Crop? @relation(fields: [cropId], references: [id], onDelete: SetNull)
+}
+
+model YieldForecast {
+  id              Int      @id @default(autoincrement())
+  expectedYield   Float
+  confidenceLevel Float?
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  cropId Int
+  crop   Crop @relation(fields: [cropId], references: [id], onDelete: Cascade)
+}
+
+model CropReference {
+  id                 Int      @id @default(autoincrement())
+  name               String   @unique
+  description        String?
+  category           String?
+  optimalMoistureMin Int?
+  optimalMoistureMax Int?
+  baseYield          Float?
+  yieldUnit          String?
+  growingDays        Int?
+  imageUrl           String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  title     String
+  message   String
+  type      String   @default("info")
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AiCache {
+  id          Int      @id @default(autoincrement())
+  key         String   @unique           
+  operation   String                     
+  prompt      String   @db.Text          
+  response    String   @db.Text          
+  provider    String                     
+  model       String                     
+  tokensUsed  Int?                       
+  hitCount    Int      @default(0)       
+  createdAt   DateTime @default(now())
+  lastUsedAt  DateTime @default(now())
+  expiresAt   DateTime?                  
+
+  @@index([operation])
+  @@index([expiresAt])
+  @@map("ai_cache")
+}
+
+model IotSensor {
+  id         Int       @id @default(autoincrement())
+  name       String
+  apiKey     String    @unique
+  mode       String    @default("simulated")
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  lastSeenAt DateTime?
+
+  cropId Int
+  crop   Crop @relation(fields: [cropId], references: [id], onDelete: Cascade)
+
+  @@index([cropId])
+  @@index([apiKey])
+  @@map("iot_sensors")
+}
