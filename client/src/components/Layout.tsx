@@ -30,24 +30,10 @@ const navGroups = [
   },
 ];
 
-
-
 const Layout = () => {
   const { user, logout } = useAuth();
 
   const isAdmin = user?.role === "ADMIN";
-
-{isAdmin && (
-  <NavLink
-    to="/admin"
-    className={({ isActive }) =>
-      isActive ? "sidebar-link active" : "sidebar-link"
-    }
-  >
-    <span className="sidebar-link-icon">⚙</span>
-    <span>Адмін-панель</span>
-  </NavLink>
-)}
 
   return (
     <div className="app-layout">
@@ -81,6 +67,24 @@ const Layout = () => {
           </div>
         ))}
 
+        {isAdmin && (
+          <div className="sidebar-section">
+            <div className="sidebar-section-title">Адміністрування</div>
+
+            <nav className="sidebar-nav">
+              <NavLink
+                to="/admin"
+                className={({ isActive }) =>
+                  isActive ? "sidebar-link active" : "sidebar-link"
+                }
+              >
+                <span className="sidebar-link-icon">⚙</span>
+                <span>Адмін-панель</span>
+              </NavLink>
+            </nav>
+          </div>
+        )}
+
         <div className="sidebar-tip">
           <div className="sidebar-tip-icon">🌱</div>
           <div className="sidebar-tip-title">Порада дня</div>
@@ -111,7 +115,9 @@ const Layout = () => {
         </header>
 
         <section className="page-content">
-          <Outlet />
+          <div className="page-shell">
+            <Outlet />
+          </div>
         </section>
       </main>
     </div>

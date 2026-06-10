@@ -2081,3 +2081,446 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* ================================
+   Demo polish / layout alignment
+   ================================ */
+
+html,
+body,
+#root {
+  min-height: 100%;
+  width: 100%;
+}
+
+body {
+  margin: 0;
+  overflow-x: hidden;
+  background: #f3f7fb;
+}
+
+/* AUTH PAGES */
+
+.auth-page,
+.auth-container,
+.auth-layout {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  box-sizing: border-box;
+  background:
+    radial-gradient(circle at top left, rgba(34, 197, 94, 0.12), transparent 32%),
+    linear-gradient(135deg, #eefdf5 0%, #f8fafc 45%, #f1f5f9 100%);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+/* MAIN APP LAYOUT */
+
+.app-shell,
+.dashboard-layout,
+.main-layout {
+  width: 100%;
+  min-height: 100vh;
+}
+
+.main-content,
+.content,
+.page-content {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* якщо є sidebar */
+.layout-with-sidebar {
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+}
+
+.sidebar {
+  flex: 0 0 260px;
+}
+
+.main-area {
+  flex: 1;
+  min-width: 0;
+  background: #f3f7fb;
+}
+
+/* центрований контейнер сторінок */
+
+.page-container,
+.dashboard-page,
+.plots-page,
+.crops-page,
+.recommendations-page,
+.forecasts-page,
+.charts-page,
+.admin-page {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 36px 32px;
+  box-sizing: border-box;
+}
+
+/* якщо сторінки не мають спеціального класу */
+main {
+  width: 100%;
+}
+
+main > div {
+  box-sizing: border-box;
+}
+
+/* Dashboard polish */
+
+.dashboard-grid,
+.stats-grid,
+.admin-stats-grid {
+  width: 100%;
+}
+
+.dashboard-cards,
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  gap: 20px;
+}
+
+.dashboard-main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(320px, 1fr) minmax(300px, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.panel-card,
+.stat-card,
+.card {
+  box-sizing: border-box;
+}
+
+/* Header alignment */
+
+.resource-header,
+.page-header,
+.dashboard-header {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+
+.page-title {
+  margin-top: 0;
+}
+
+/* Topbar */
+
+.topbar,
+.header {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Responsive */
+
+@media (max-width: 1300px) {
+  .page-container,
+  .dashboard-page,
+  .plots-page,
+  .crops-page,
+  .recommendations-page,
+  .forecasts-page,
+  .charts-page,
+  .admin-page {
+    max-width: 1080px;
+  }
+
+  .dashboard-main-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 1050px) {
+  .dashboard-cards,
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+  }
+
+  .dashboard-main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .resource-header,
+  .page-header,
+  .dashboard-header {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 760px) {
+  .layout-with-sidebar {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    flex: none;
+    width: 100%;
+  }
+
+  .page-container,
+  .dashboard-page,
+  .plots-page,
+  .crops-page,
+  .recommendations-page,
+  .forecasts-page,
+  .charts-page,
+  .admin-page {
+    padding: 24px 16px;
+  }
+
+  .dashboard-cards,
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+} 
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  background: #f3f7fb;
+}
+
+.sidebar {
+  flex: 0 0 260px;
+  min-height: 100vh;
+}
+
+.main-shell {
+  flex: 1;
+  min-width: 0;
+  width: calc(100% - 260px);
+  background: #f3f7fb;
+}
+
+.topbar {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.page-content {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.page-shell {
+  width: 100%;
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 36px 36px 56px;
+  box-sizing: border-box;
+}
+
+.page-shell > * {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Щоб старі сторінки не задавали вузьку ширину */
+.dashboard-page,
+.plots-page,
+.crops-page,
+.recommendations-page,
+.forecasts-page,
+.charts-page,
+.admin-page,
+.crop-reference-page {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+/* Сітки на dashboard */
+.stats-grid,
+.admin-stats-grid,
+.dashboard-cards {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  gap: 20px;
+}
+
+.dashboard-main-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 1fr) minmax(300px, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.panel-card,
+.stat-card,
+.card {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.resource-header,
+.page-header,
+.dashboard-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+
+@media (min-width: 1600px) {
+  .page-shell {
+    max-width: 1480px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .page-shell {
+    max-width: 100%;
+    padding: 32px 24px 48px;
+  }
+
+  .stats-grid,
+  .admin-stats-grid,
+  .dashboard-cards {
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+  }
+
+  .dashboard-main-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-layout {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    flex: none;
+    width: 100%;
+    min-height: auto;
+  }
+
+  .main-shell {
+    width: 100%;
+  }
+
+  .page-shell {
+    padding: 24px 16px 40px;
+  }
+
+  .stats-grid,
+  .admin-stats-grid,
+  .dashboard-cards,
+  .dashboard-main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .resource-header,
+  .page-header,
+  .dashboard-header {
+    flex-direction: column;
+  }
+}
+
+.page-shell {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding: 36px 32px 56px;
+}
+
+/* Прибираємо старі обмеження ширини у сторінок */
+.page-shell > div,
+.dashboard-page,
+.plots-page,
+.crops-page,
+.crop-details-page,
+.create-crop-page,
+.create-plot-page,
+.recommendations-page,
+.forecasts-page,
+.charts-page,
+.admin-page,
+.crop-reference-page {
+  width: 100%;
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  box-sizing: border-box;
+}
+
+/* Контейнер зі списками/картками має розтягуватись */
+.resource-grid,
+.cards-grid,
+.plots-grid,
+.crops-grid,
+.recommendations-grid,
+.forecasts-grid,
+.admin-grid,
+.chart-grid {
+  width: 100%;
+  max-width: none !important;
+}
+
+/* Якщо є форми/панелі, нехай займають нормальну ширину */
+.form-card,
+.panel-card,
+.resource-card,
+.chart-card {
+  box-sizing: border-box;
+}
+
+/* Dashboard: картки на всю ширину робочої області */
+.stats-grid,
+.dashboard-cards {
+  width: 100%;
+  grid-template-columns: repeat(4, minmax(220px, 1fr));
+}
+
+/* Нижні блоки dashboard */
+.dashboard-main-grid {
+  width: 100%;
+  grid-template-columns: minmax(420px, 1.5fr) minmax(320px, 1fr) minmax(320px, 1fr);
+}
+
+/* На дуже великих екранах трохи ширший внутрішній відступ */
+@media (min-width: 1500px) {
+  .page-shell {
+    padding-left: 48px;
+    padding-right: 48px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .stats-grid,
+  .dashboard-cards {
+    grid-template-columns: repeat(2, minmax(220px, 1fr));
+  }
+
+  .dashboard-main-grid {
+    grid-template-columns: 1fr;
+  }
+}
