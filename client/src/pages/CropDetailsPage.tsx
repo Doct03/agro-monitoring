@@ -42,7 +42,8 @@ const formatDateTime = (value?: string | null) => {
 };
 
 const getIoTEndpoint = () => {
-  return "http://localhost:5000/api/iot/moisture";
+  const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+  return `${apiUrl.replace(/\/$/, "")}/iot/moisture`;
 };
 
 const CropDetailsPage = () => {
@@ -257,8 +258,31 @@ const CropDetailsPage = () => {
   }
 
   return (
-    <div style={{ color: "black" }}>
-      <h1>Детальна інформація про культуру</h1>
+    <div className="details-page crop-details-page">
+      <div className="details-hero crop-hero">
+  <div>
+    <div className="details-kicker">Детальна інформація про культуру</div>
+    <h1>{crop.name}</h1>
+
+    <div className="details-meta">
+      <span>🌱 {crop.growthStage || "стадія не вказана"}</span>
+      <span>📍 {crop.plot?.name || "ділянка не вказана"}</span>
+      <span>🌍 {crop.plot?.region || "регіон не вказано"}</span>
+    </div>
+  </div>
+
+  <div className="details-hero-badge">
+    <span>Оптимальна вологість</span>
+    <strong>
+      {crop.optimalMoistureMin !== null &&
+      crop.optimalMoistureMin !== undefined &&
+      crop.optimalMoistureMax !== null &&
+      crop.optimalMoistureMax !== undefined
+        ? `${crop.optimalMoistureMin}% – ${crop.optimalMoistureMax}%`
+        : "не вказано"}
+    </strong>
+  </div>
+</div>
 
       <div className="details-card">
         <h2>{crop.name}</h2>

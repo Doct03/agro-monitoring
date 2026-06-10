@@ -1,19 +1,58 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getPlotById } from "../api/api";
 
+const formatDate = (value?: string | null) => {
+  if (!value) return "не вказано";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "не вказано";
+  }
+
+  return date.toLocaleDateString();
+};
+
+const formatDateTime = (value?: string | null) => {
+  if (!value) return "не вказано";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "не вказано";
+  }
+
+  return date.toLocaleString();
+};
+
 const PlotDetailsPage = () => {
   const { id } = useParams();
+
   const [plot, setPlot] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
     const loadPlot = async () => {
       try {
+        setLoading(true);
+        setMessage("");
+
         const data = await getPlotById(Number(id));
-        setPlot(data);
-      } catch (error) {
+
+        setPlot({
+          ...data,
+          crops: data.crops || [],
+          weatherRecords: data.weatherRecords || [],
+          recommendations: data.recommendations || [],
+        });
+      } catch (error: any) {
         console.error("Plot details load error:", error);
+        setMessage(
+          error?.response?.data?.message ||
+            "Не вдалося завантажити детальну інформацію про ділянку."
+        );
       } finally {
         setLoading(false);
       }
@@ -24,115 +63,231 @@ const PlotDetailsPage = () => {
     }
   }, [id]);
 
+  const latestWeather = plot?.weatherRecords?.[0] || null;
+
+  const latestRecommendations = useMemo(() => {
+    return plot?.recommendations?.slice(0, 5) || [];
+  }, [plot]);
+
+  const averageMoisture = useMemo(() => {
+    const crops = plot?.crops || [];
+
+    const values = crops
+      .map((crop: any) => crop.moistureRecords?.[0]?.value)
+      .filter((value: any) => value !== null && value !== undefined)
+      .map(Number);
+
+    if (values.length === 0) {
+      return null;
+    }
+
+    return Math.round(
+      values.reduce((sum: number, value: number) => sum + value, 0) /
+        values.length
+    );
+  }, [plot]);
+
   if (loading) {
-    return <p>Завантаження...</p>;
+    return (
+      <div className="details-page">
+        <div className="details-loading">Завантаження...</div>
+      </div>
+    );
+  }
+
+  if (message) {
+    return (
+      <div className="details-page">
+        <h1 className="page-title">Детальна інформація про ділянку</h1>
+        <div className="details-alert details-alert-error">{message}</div>
+      </div>
+    );
   }
 
   if (!plot) {
-    return <p>Ділянку не знайдено</p>;
+    return (
+      <div className="details-page">
+        <h1 className="page-title">Детальна інформація про ділянку</h1>
+        <div className="details-alert">Ділянку не знайдено.</div>
+      </div>
+    );
   }
 
-  const latestWeather = plot.weatherRecords?.[0];
-
   return (
-    <div style={{color:"black"}}>
-      <h1 style={{color:"black"}}>Детальна інформація про ділянку</h1>
+    <div className="details-page">
+      <div className="details-hero plot-hero">
+        <div>
+          <div className="details-kicker">Детальна інформація про ділянку</div>
+          <h1>{plot.name}</h1>
 
-      <div
-        style={{
-          background: "white",
-          color: "black",
-          padding: 20,
-          borderRadius: 12,
-          marginBottom: 20,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-        }}
-      >
-        <h2>{plot.name}</h2>
-        <p>Площа: {plot.area} га</p>
-        <p>Регіон: {plot.region}</p>
-        <p>Тип ґрунту: {plot.soilType || "не вказано"}</p>
-        <p>Координати: {plot.latitude}, {plot.longitude}</p>
+          <div className="details-meta">
+            <span>📍 {plot.region || "регіон не вказано"}</span>
+            <span>🌱 {plot.soilType || "тип ґрунту не вказано"}</span>
+            <span>📐 {plot.area ?? "—"} га</span>
+          </div>
+        </div>
+
+        <div className="details-hero-badge">
+          <span>Координати</span>
+          <strong>
+            {plot.latitude && plot.longitude
+              ? `${plot.latitude}, ${plot.longitude}`
+              : "не вказано"}
+          </strong>
+        </div>
       </div>
 
-      <div
-        style={{
-          background: "white",
-          padding: 20,
-          color: "black",
-          borderRadius: 12,
-          marginBottom: 20,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-        }}
-      >
-        <h3>Останні погодні дані</h3>
-        {latestWeather ? (
-          <>
-            <p>Температура: {latestWeather.temperature} °C</p>
-            <p>Вологість повітря: {latestWeather.humidity} %</p>
-            <p>Опади: {latestWeather.rainfall} мм</p>
-            <p>Швидкість вітру: {latestWeather.windSpeed ?? 0} м/с</p>
-            <p>Оновлено: {new Date(latestWeather.recordedAt).toLocaleString()}</p>
-          </>
-        ) : (
-          <p>Погодні дані відсутні</p>
-        )}
+      <div className="details-stats-grid">
+        <div className="details-stat-card">
+          <span>Кількість культур</span>
+          <strong>{plot.crops.length}</strong>
+          <p>культури на ділянці</p>
+        </div>
+
+        <div className="details-stat-card">
+          <span>Середня вологість</span>
+          <strong>{averageMoisture !== null ? `${averageMoisture}%` : "—"}</strong>
+          <p>за останніми записами культур</p>
+        </div>
+
+        <div className="details-stat-card">
+          <span>Поточна температура</span>
+          <strong>
+            {latestWeather ? `${latestWeather.temperature}°C` : "—"}
+          </strong>
+          <p>останні погодні дані</p>
+        </div>
+
+        <div className="details-stat-card">
+          <span>Рекомендації</span>
+          <strong>{plot.recommendations.length}</strong>
+          <p>сформовані поради</p>
+        </div>
       </div>
 
-      <div
-        style={{
-          background: "white",
-          color: "black",
-          padding: 20,
-          borderRadius: 12,
-          marginBottom: 20,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-        }}
-      >
-        <h3>Культури на ділянці</h3>
+      <div className="details-grid details-grid-two">
+        <section className="details-card">
+          <div className="details-card-header">
+            <div>
+              <h3>Погодні умови</h3>
+              <p>Останні отримані погодні дані для цієї ділянки.</p>
+            </div>
+            <span className="details-pill">API</span>
+          </div>
+
+          {latestWeather ? (
+            <div className="weather-details-grid">
+              <div>
+                <span>Температура</span>
+                <strong>{latestWeather.temperature} °C</strong>
+              </div>
+
+              <div>
+                <span>Вологість повітря</span>
+                <strong>{latestWeather.humidity} %</strong>
+              </div>
+
+              <div>
+                <span>Опади</span>
+                <strong>{latestWeather.rainfall} мм</strong>
+              </div>
+
+              <div>
+                <span>Вітер</span>
+                <strong>{latestWeather.windSpeed ?? 0} м/с</strong>
+              </div>
+            </div>
+          ) : (
+            <div className="details-empty">
+              Погодні дані відсутні. Запустіть оновлення моніторингу.
+            </div>
+          )}
+
+          {latestWeather && (
+            <div className="details-card-footer">
+              Оновлено: {formatDateTime(latestWeather.recordedAt)}
+            </div>
+          )}
+        </section>
+
+        <section className="details-card">
+          <div className="details-card-header">
+            <div>
+              <h3>Останні рекомендації</h3>
+              <p>Поради, сформовані системою моніторингу.</p>
+            </div>
+            <Link className="details-link" to="/recommendations">
+              Усі
+            </Link>
+          </div>
+
+          {latestRecommendations.length === 0 ? (
+            <div className="details-empty">Рекомендації відсутні.</div>
+          ) : (
+            <div className="details-list">
+              {latestRecommendations.map((item: any) => (
+                <div className="details-list-item" key={item.id}>
+                  <div className="details-list-icon">💧</div>
+
+                  <div>
+                    <strong>{item.title || item.recommendationType}</strong>
+                    <p>{item.message || item.advice || "Опис відсутній"}</p>
+                    <small>{formatDateTime(item.createdAt)}</small>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
+
+      <section className="details-card">
+        <div className="details-card-header">
+          <div>
+            <h3>Культури на ділянці</h3>
+            <p>Перелік культур, які закріплені за цією ділянкою.</p>
+          </div>
+
+          <Link className="primary-button details-header-button" to="/crops/create">
+            + Додати культуру
+          </Link>
+        </div>
+
         {plot.crops.length === 0 ? (
-          <p>Культури відсутні</p>
+          <div className="details-empty">
+            На цій ділянці ще не створено культур.
+          </div>
         ) : (
-          plot.crops.map((crop: any) => (
-            <div key={crop.id} style={{ marginBottom: 12 }}>
-              <strong>{crop.name}</strong>
-              <p>Дата посадки: {new Date(crop.plantingDate).toLocaleDateString()}</p>
-              <Link
-                to={`/crops/${crop.id}`}
-                style={{
-                  color: "#2563eb",
-                  textDecoration: "none",
-                  fontWeight: 600,
-                }}
-              >
-                Перейти до культури
-              </Link>
-            </div>
-          ))
-        )}
-      </div>
+          <div className="crop-details-grid">
+            {plot.crops.map((crop: any) => {
+              const latestMoisture = crop.moistureRecords?.[0];
 
-      <div
-        style={{
-          background: "white",
-          padding: 20,
-          borderRadius: 12,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-        }}
-      >
-        <h3 style={{color:"black"}}>Останні рекомендації</h3>
-        {plot.recommendations.length === 0 ? (
-          <p style={{color:"black"}}>Рекомендації відсутні</p>
-        ) : (
-          plot.recommendations.slice(0, 5).map((item: any) => (
-            <div key={item.id} style={{ marginBottom: 12 }}>
-              <strong>{item.recommendationType}</strong>
-              <p>{item.message}</p>
-              <small>{new Date(item.createdAt).toLocaleString()}</small>
-            </div>
-          ))
+              return (
+                <Link
+                  to={`/crops/${crop.id}`}
+                  className="crop-mini-card"
+                  key={crop.id}
+                >
+                  <div className="crop-mini-icon">🌿</div>
+
+                  <div className="crop-mini-body">
+                    <strong>{crop.name}</strong>
+                    <span>Посадка: {formatDate(crop.plantingDate)}</span>
+                    <span>Стадія: {crop.growthStage || "не вказано"}</span>
+                  </div>
+
+                  <div className="crop-mini-side">
+                    <span>Вологість</span>
+                    <strong>
+                      {latestMoisture ? `${latestMoisture.value}%` : "—"}
+                    </strong>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
         )}
-      </div>
+      </section>
     </div>
   );
 };
